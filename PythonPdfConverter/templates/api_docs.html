@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Documentación API del Conversor de PDF - Vanguardia Tecnologias</title>
+    <!-- Tailwind CSS via CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        pre {
+            background-color: #f8f9fa;
+            padding: 1rem;
+            border-radius: 0.375rem;
+            overflow-x: auto;
+        }
+        code {
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+            font-size: 0.875rem;
+        }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <div class="container mx-auto px-4 py-8">
+        <header class="mb-12">
+            <div class="flex justify-between items-center mb-6">
+                <h1 class="text-3xl font-bold text-gray-800">Documentación API del Conversor de PDF</h1>
+                <a href="/" class="text-blue-500 hover:text-blue-700 flex items-center">
+                    <i class="fas fa-arrow-left mr-2"></i> Volver al Conversor
+                </a>
+            </div>
+            <p class="text-gray-600 max-w-3xl">
+                Esta documentación describe los endpoints de API disponibles para el servicio de Conversor de PDF.
+                Puedes usar estos endpoints para integrar capacidades de conversión de PDF en tus propias aplicaciones.
+            </p>
+            <p class="text-blue-600 mt-2 font-medium">Vanguardia Tecnologias</p>
+        </header>
+
+        <main class="max-w-4xl mx-auto bg-white rounded-lg shadow-md p-6 md:p-8">
+            <section class="mb-10">
+                <h2 class="text-2xl font-semibold text-gray-800 mb-4">Endpoints de API</h2>
+                
+                <!-- Convert Endpoint -->
+                <div class="mb-8 border-b pb-8">
+                    <div class="flex items-center mb-3">
+                        <span class="bg-green-100 text-green-800 font-medium px-3 py-1 rounded-md mr-3">POST</span>
+                        <h3 class="text-xl font-medium text-gray-800">/api/convert</h3>
+                    </div>
+                    <p class="text-gray-600 mb-4">
+                        Sube un archivo PDF para conversión. El archivo será procesado según los parámetros de conversión.
+                    </p>
+                    
+                    <h4 class="font-medium text-gray-700 mb-2">Solicitud</h4>
+                    <p class="text-gray-600 mb-2">Content-Type: multipart/form-data</p>
+                    <p class="text-gray-600 mb-4">Parámetros:</p>
+                    <ul class="list-disc pl-6 mb-4 text-gray-600">
+                        <li><strong>file</strong> - El archivo PDF a convertir (requerido)</li>
+                    </ul>
+                    
+                    <h4 class="font-medium text-gray-700 mb-2">Respuesta</h4>
+                    <p class="text-gray-600 mb-2">Content-Type: application/json</p>
+                    <pre><code>{
+  "job_id": "550e8400-e29b-41d4-a716-446655440000",
+  "status": "queued",
+  "status_url": "http://example.com/api/status/550e8400-e29b-41d4-a716-446655440000"
+}</code></pre>
+                </div>
+                
+                <!-- Status Endpoint -->
+                <div class="mb-8 border-b pb-8">
+                    <div class="flex items-center mb-3">
+                        <span class="bg-blue-100 text-blue-800 font-medium px-3 py-1 rounded-md mr-3">GET</span>
+                        <h3 class="text-xl font-medium text-gray-800">/api/status/{job_id}</h3>
+                    </div>
+                    <p class="text-gray-600 mb-4">
+                        Verifica el estado de un trabajo de conversión. El estado puede ser "queued", "processing", "completed", o "failed".
+                    </p>
+                    
+                    <h4 class="font-medium text-gray-700 mb-2">Parámetros</h4>
+                    <ul class="list-disc pl-6 mb-4 text-gray-600">
+                        <li><strong>job_id</strong> - El ID del trabajo de conversión (requerido)</li>
+                    </ul>
+                    
+                    <h4 class="font-medium text-gray-700 mb-2">Respuesta</h4>
+                    <p class="text-gray-600 mb-2">Content-Type: application/json</p>
+                    <pre><code>{
+  "job_id": "550e8400-e29b-41d4-a716-446655440000",
+  "status": "completed",
+  "original_filename": "document.pdf",
+  "download_url": "http://example.com/api/download/550e8400-e29b-41d4-a716-446655440000",
+  "log": "1. Aplanando formularios PDF...\n2. Eliminando formularios, JavaScript y adjuntos...\n..."
+}</code></pre>
+                    
+                    <p class="text-gray-600 mt-4">Si el trabajo falla, la respuesta incluirá un mensaje de error:</p>
+                    <pre><code>{
+  "job_id": "550e8400-e29b-41d4-a716-446655440000",
+  "status": "failed",
+  "original_filename": "document.pdf",
+  "error": "Mensaje de error describiendo lo que salió mal",
+  "log": "..."
+}</code></pre>
+                </div>
+                
+                <!-- Download Endpoint -->
+                <div class="mb-8">
+                    <div class="flex items-center mb-3">
+                        <span class="bg-blue-100 text-blue-800 font-medium px-3 py-1 rounded-md mr-3">GET</span>
+                        <h3 class="text-xl font-medium text-gray-800">/api/download/{job_id}</h3>
+                    </div>
+                    <p class="text-gray-600 mb-4">
+                        Descargar el archivo PDF convertido. Este endpoint solo está disponible para trabajos completados.
+                    </p>
+                    
+                    <h4 class="font-medium text-gray-700 mb-2">Parámetros</h4>
+                    <ul class="list-disc pl-6 mb-4 text-gray-600">
+                        <li><strong>job_id</strong> - El ID del trabajo de conversión (requerido)</li>
+                    </ul>
+                    
+                    <h4 class="font-medium text-gray-700 mb-2">Respuesta</h4>
+                    <p class="text-gray-600 mb-2">Content-Type: application/pdf</p>
+                    <p class="text-gray-600">El archivo PDF convertido será devuelto como un adjunto.</p>
+                </div>
+            </section>
+            
+            <section class="mb-10">
+                <h2 class="text-2xl font-semibold text-gray-800 mb-4">Ejemplo de Uso</h2>
+                
+                <h3 class="text-lg font-medium text-gray-800 mb-3">Usando cURL</h3>
+                <pre><code># Subir un PDF para conversión
+curl -X POST -F "file=@documento.pdf" http://example.com/api/convert
+
+# Verificar el estado de un trabajo de conversión
+curl http://example.com/api/status/550e8400-e29b-41d4-a716-446655440000
+
+# Descargar el PDF convertido
+curl -o convertido.pdf http://example.com/api/download/550e8400-e29b-41d4-a716-446655440000</code></pre>
+                
+                <h3 class="text-lg font-medium text-gray-800 mt-6 mb-3">Usando JavaScript</h3>
+                <pre><code>// Subir un PDF para conversión
+async function convertirPdf(archivo) {
+  const formData = new FormData();
+  formData.append('file', archivo);
+  
+  const response = await fetch('/api/convert', {
+    method: 'POST',
+    body: formData
+  });
+  
+  const data = await response.json();
+  return data.job_id;
+}
+
+// Verificar el estado de un trabajo de conversión
+async function verificarEstado(jobId) {
+  const response = await fetch(`/api/status/${jobId}`);
+  return await response.json();
+}
+
+// Descargar el PDF convertido
+function descargarPdf(jobId) {
+  window.location.href = `/api/download/${jobId}`;
+}</code></pre>
+            </section>
+            
+            <section>
+                <h2 class="text-2xl font-semibold text-gray-800 mb-4">Códigos de Error</h2>
+                
+                <div class="overflow-x-auto">
+                    <table class="min-w-full bg-white">
+                        <thead>
+                            <tr class="bg-gray-100 text-gray-700">
+                                <th class="py-3 px-4 text-left">Código de Estado</th>
+                                <th class="py-3 px-4 text-left">Descripción</th>
+                            </tr>
+                        </thead>
+                        <tbody class="text-gray-600">
+                            <tr class="border-t">
+                                <td class="py-3 px-4">400</td>
+                                <td class="py-3 px-4">Solicitud Incorrecta - Archivo faltante, archivo vacío o formato de archivo no soportado</td>
+                            </tr>
+                            <tr class="border-t">
+                                <td class="py-3 px-4">404</td>
+                                <td class="py-3 px-4">No Encontrado - ID de trabajo no encontrado o archivo no disponible</td>
+                            </tr>
+                            <tr class="border-t">
+                                <td class="py-3 px-4">413</td>
+                                <td class="py-3 px-4">Carga Demasiado Grande - El archivo excede el tamaño máximo permitido (50MB)</td>
+                            </tr>
+                            <tr class="border-t">
+                                <td class="py-3 px-4">500</td>
+                                <td class="py-3 px-4">Error Interno del Servidor - Ocurrió un error durante el procesamiento</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+        </main>
+        
+        <footer class="mt-12 text-center text-gray-500 text-sm">
+            <p>API del Conversor de PDF &copy; 2023 - Vanguardia Tecnologias</p>
+            <p class="mt-1">
+                <a href="/" class="text-blue-500 hover:text-blue-700">Volver al Conversor</a>
+            </p>
+        </footer>
+    </div>
+</body>
+</html> 
