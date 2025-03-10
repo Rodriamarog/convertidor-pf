@@ -1,0 +1,68 @@
+FROM python:3.9-slim
+
+# Instalar dependencias del sistema y Nginx
+RUN apt-get update && apt-get install -y \
+    ghostscript \
+    pdftk \
+    poppler-utils \
+    imagemagick \
+    qpdf \
+    nginx \
+    supervisor \
+    && rm -rf /var/lib/apt/lists/*
+
+# Configurar ImageMagick para permitir operaciones con PDF
+RUN sed -i 's/rights="none" pattern="PDF"/rights="read|write" pattern="PDF"/' /etc/ImageMagick-6/policy.xml
+
+WORKDIR /app
+
+# Copiar los archivos de requisitos primero para aprovechar la caché de Docker
+COPY requirements.txt .
+
+# Instalar dependencias de Python
+RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir gunicorn==21.2.0
+
+# Copiar el resto de la aplicación
+COPY . .
+
+# Configurar Nginx
+RUN rm /etc/nginx/sites-enabled/default
+COPY nginx.conf /etc/nginx/conf.d/default.conf
+
+# Crear archivo de configuración para supervisor
+RUN mkdir -p /var/log/supervisor
+RUN echo '[supervisord]\n\
+nodaemon=true\n\
+user=root\n\
+logfile=/var/log/supervisor/supervisord.log\n\
+pidfile=/var/run/supervisord.pid\n\
+\n\
+[program:nginx]\n\
+command=/usr/sbin/nginx -g "daemon off;"\n\
+autostart=true\n\
+autorestart=true\n\
+stdout_logfile=/dev/stdout\n\
+stdout_logfile_maxbytes=0\n\
+stderr_logfile=/dev/stderr\n\
+stderr_logfile_maxbytes=0\n\
+\n\
+[program:gunicorn]\n\
+command=gunicorn --bind 0.0.0.0:5001 app:app --workers 4 --timeout 300 --log-level debug\n\
+directory=/app\n\
+autostart=true\n\
+autorestart=true\n\
+stdout_logfile=/dev/stdout\n\
+stdout_logfile_maxbytes=0\n\
+stderr_logfile=/dev/stderr\n\
+stderr_logfile_maxbytes=0' > /etc/supervisor/conf.d/supervisord.conf
+
+# Crear directorios necesarios
+RUN mkdir -p uploads results jobs
+RUN chmod 777 uploads results jobs
+
+# Exponer el puerto
+EXPOSE 80
+
+# Comando para iniciar supervisor (que gestionará Nginx y Gunicorn)
+CMD ["/usr/bin/supervisord", "-c", "/etc/supervisor/conf.d/supervisord.conf"] 

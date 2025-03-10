@@ -297,6 +297,117 @@ def direct_download(job_id):
         print(f"Error sending file: {e}")
         return f"Error al enviar el archivo: {str(e)}", 500
 
+@app.route('/api/convert-direct', methods=['POST'])
+def convert_pdf_direct():
+    """Endpoint para convertir un PDF y devolverlo directamente"""
+    # Check if file is in the request
+    if 'file' not in request.files:
+        return jsonify({'error': 'No file part'}), 400
+        
+    file = request.files['file']
+    
+    # Check if a file was selected
+    if file.filename == '':
+        return jsonify({'error': 'No file selected'}), 400
+        
+    # Check if the file is a PDF
+    if not allowed_file(file.filename):
+        return jsonify({'error': 'Only PDF files are allowed'}), 400
+    
+    # Generate a unique job ID
+    job_id = str(uuid.uuid4())
+    
+    # Save the uploaded file
+    filename = secure_filename(file.filename)
+    input_path = os.path.join(app.config['UPLOAD_FOLDER'], f"{job_id}_{filename}")
+    file.save(input_path)
+    
+    # Initialize job status
+    job_info = {
+        'status': 'processing',
+        'original_filename': filename,
+        'input_path': input_path,
+        'output_path': None,
+        'error': None,
+        'log': None,
+        'created_at': time.time()
+    }
+    save_job_info(job_id, job_info)
+    
+    # Define output path
+    output_filename = f"{job_id}.pdf"
+    output_path = os.path.join(app.config['RESULT_FOLDER'], output_filename)
+    
+    try:
+        # Process the PDF synchronously
+        import io
+        import sys
+        original_stdout = sys.stdout
+        captured_output = io.StringIO()
+        sys.stdout = captured_output
+        
+        try:
+            # Call the PDF converter
+            pdf_converter.main(input_path)
+            
+            # Move the output.pdf to our result folder with the job ID
+            if os.path.exists('output.pdf'):
+                print(f"Output.pdf exists, copying to {output_path}")
+                import shutil
+                shutil.copy2('output.pdf', output_path)
+                
+                try:
+                    os.remove('output.pdf')
+                except Exception as e:
+                    print(f"Warning: Could not remove original output.pdf: {e}")
+                
+                if os.path.exists(output_path):
+                    print(f"File successfully copied to {output_path}")
+                    job_info['output_path'] = output_path
+                    job_info['status'] = 'completed'
+                else:
+                    print(f"Failed to copy file to {output_path}")
+                    job_info['status'] = 'failed'
+                    job_info['error'] = 'Failed to save output file'
+                    return jsonify({'error': 'Failed to save output file'}), 500
+            else:
+                print("Output.pdf not found")
+                job_info['status'] = 'failed'
+                job_info['error'] = 'Conversion failed to produce output file'
+                return jsonify({'error': 'Conversion failed to produce output file'}), 500
+        except Exception as e:
+            print(f"Error in PDF conversion: {e}")
+            job_info['status'] = 'failed'
+            job_info['error'] = str(e)
+            return jsonify({'error': str(e)}), 500
+        finally:
+            # Restore stdout and capture the output
+            sys.stdout = original_stdout
+            job_info['log'] = captured_output.getvalue()
+            save_job_info(job_id, job_info)
+        
+        # Clean up the input file
+        try:
+            os.remove(input_path)
+        except Exception as e:
+            print(f"Error removing input file: {e}")
+        
+        # Generate a more user-friendly filename
+        original_name = os.path.splitext(filename)[0]
+        download_name = f"{original_name}_convertido.pdf"
+        
+        # Return the converted PDF directly
+        return send_file(
+            output_path,
+            as_attachment=True,
+            download_name=download_name,
+            mimetype='application/pdf'
+        )
+        
+    except Exception as e:
+        print(f"Error in convert_pdf_direct: {e}")
+        return jsonify({'error': str(e)}), 500
+
 # Clean up old jobs periodically
 @app.before_request
 def cleanup_old_jobs():

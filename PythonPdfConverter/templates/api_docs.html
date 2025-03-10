@@ -195,6 +195,17 @@ function descargarPdf(jobId) {
                     </table>
                 </div>
             </section>
+
+            <section class="mb-10">
+                <h2 class="text-2xl font-semibold text-gray-800 mb-4">Conversión Directa (Un Solo Comando)</h2>
+                
+                <h3 class="text-lg font-medium text-gray-800 mt-6 mb-3">Conversión Directa (Un Solo Comando)</h3>
+                <p class="mb-2">Este endpoint permite convertir un PDF y recibir el resultado directamente en un solo paso:</p>
+
+                <pre><code>curl -X POST -F "file=@tu_archivo.pdf" -o archivo_convertido.pdf http://localhost:9090/api/convert-direct</code></pre>
+
+                <p class="mt-2 text-sm text-gray-600">Nota: Este proceso puede tardar varios segundos dependiendo del tamaño del archivo.</p>
+            </section>
         </main>
         
         <footer class="mt-12 text-center text-gray-500 text-sm">
