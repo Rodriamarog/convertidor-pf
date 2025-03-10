@@ -1,0 +1,28 @@
+services:
+  pdf-converter:
+    build: .
+    expose:
+      - "5001"
+    volumes:
+      - ./uploads:/app/uploads
+      - ./results:/app/results
+      - ./jobs:/app/jobs
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 2G
+    environment:
+      - FLASK_ENV=production
+      - WORKERS=4
+
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "9090:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf
+      - ./results:/app/results
+    depends_on:
+      - pdf-converter 

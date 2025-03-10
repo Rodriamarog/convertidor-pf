@@ -128,19 +128,20 @@ document.addEventListener('DOMContentLoaded', function() {
             
             // Check if processing is complete
             if (data.status === 'completed') {
-                showSuccess(data.download_url);
                 clearInterval(statusCheckInterval);
-                statusCheckInterval = null;
+                // Usar la URL directa si está disponible, de lo contrario usar la URL normal
+                const downloadUrl = data.direct_download_url || data.download_url;
+                showSuccess(downloadUrl);
             } else if (data.status === 'failed') {
-                showError(data.error || 'La conversión falló');
                 clearInterval(statusCheckInterval);
-                statusCheckInterval = null;
+                showError(data.error);
             }
             
         } catch (error) {
-            showError(error.message);
+            console.error('Error checking status:', error);
             clearInterval(statusCheckInterval);
             statusCheckInterval = null;
+            showError('Error al verificar el estado de la conversión.');
         }
     }
     
@@ -207,6 +208,35 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // Set download link
         downloadBtn.href = downloadUrl;
+        
+        // Add target="_blank" to open in new tab
+        downloadBtn.setAttribute('target', '_blank');
+        
+        // Add event listener to handle download
+        downloadBtn.addEventListener('click', function(e) {
+            // Prevent default to handle manually
+            e.preventDefault();
+            
+            // Open in new tab
+            window.open(downloadUrl, '_blank');
+        });
+        
+        // Configurar botón alternativo de descarga
+        const altDownloadBtn = document.getElementById('alt-download-btn');
+        if (altDownloadBtn) {
+            altDownloadBtn.addEventListener('click', function() {
+                // Crear un iframe oculto para forzar la descarga
+                const iframe = document.createElement('iframe');
+                iframe.style.display = 'none';
+                iframe.src = downloadUrl;
+                document.body.appendChild(iframe);
+                
+                // Eliminar el iframe después de un tiempo
+                setTimeout(() => {
+                    document.body.removeChild(iframe);
+                }, 5000);
+            });
+        }
     }
     
     // Show error result
