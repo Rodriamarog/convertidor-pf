@@ -1,9 +1,9 @@
 # Python dependencies for PDF Converter and Validator
 Flask==2.0.1
-PyPDF2==2.10.5
-pdfplumber==0.10.2
-PyMuPDF==1.23.3
-Pillow==10.0.0
+PyPDF2==3.0.1
+pdfplumber==0.7.4
+PyMuPDF==1.20.2
+Pillow==9.2.0
 pdf2image==1.16.3
 img2pdf==0.4.4
 Werkzeug==2.0.1

@@ -1,0 +1,46 @@
+# Use Windows Server Core with Python pre-installed
+FROM python:3.9-windowsservercore
+
+WORKDIR /app
+
+# Set shell to PowerShell
+SHELL ["powershell", "-Command", "$ErrorActionPreference = 'Stop'; $ProgressPreference = 'SilentlyContinue';"]
+
+# Create directories for the application
+RUN mkdir -Force uploads, results, jobs
+
+# Install Chocolatey package manager
+RUN Set-ExecutionPolicy Bypass -Scope Process -Force; \
+    [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072; \
+    iex ((New-Object System.Net.WebClient).DownloadString('https://chocolatey.org/install.ps1'))
+
+# Install Ghostscript, QPDF, and other tools using Chocolatey
+RUN choco install -y ghostscript --no-progress
+RUN choco install -y qpdf --no-progress
+
+# Download and install PDFTK
+RUN Invoke-WebRequest -Uri "https://www.pdflabs.com/tools/pdftk-the-pdf-toolkit/pdftk_free-2.02-win-setup.exe" -OutFile "pdftk-installer.exe"; \
+    Start-Process -FilePath ".\pdftk-installer.exe" -ArgumentList "/VERYSILENT" -Wait; \
+    Remove-Item "pdftk-installer.exe"
+
+# Download and install Poppler Utils
+RUN Invoke-WebRequest -Uri "https://github.com/oschwartz10612/poppler-windows/releases/download/v23.05.0-0/Release-23.05.0-0.zip" -OutFile "poppler.zip"; \
+    Expand-Archive -Path "poppler.zip" -DestinationPath "C:\poppler"; \
+    Remove-Item "poppler.zip"
+
+# Add tools to PATH
+RUN $env:PATH = $env:PATH + ';C:\Program Files\gs\gs10.01.1\bin;C:\Program Files (x86)\PDFtk\bin;C:\poppler\poppler-23.05.0\Library\bin'; \
+    [Environment]::SetEnvironmentVariable('PATH', $env:PATH, [EnvironmentVariableTarget]::Machine)
+
+# Copy requirements file and install Python dependencies
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy application code
+COPY . .
+
+# Expose port
+EXPOSE 5000
+
+# Set entry point
+ENTRYPOINT ["python", "app.py"] 
