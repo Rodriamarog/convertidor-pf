@@ -22,19 +22,25 @@ ADD https://github.com/oschwartz10612/poppler-windows/releases/download/v23.05.0
 RUN Expand-Archive -Path Release-23.05.0-0.zip -DestinationPath C:\poppler
 RUN Remove-Item -Force Release-23.05.0-0.zip
 
-# Add tools to PATH
-RUN $env:PATH = $env:PATH + ';C:\Program Files\gs\gs10.04.0\bin;C:\Program Files (x86)\PDFtk\bin;C:\poppler\poppler-23.05.0\Library\bin;C:\qpdf\bin'; \
+# Add tools to PATH (removed Ghostscript)
+RUN $env:PATH = $env:PATH + ';C:\Program Files (x86)\PDFtk\bin;C:\poppler\poppler-23.05.0\Library\bin;C:\qpdf\bin'; \
     [Environment]::SetEnvironmentVariable('PATH', $env:PATH, [EnvironmentVariableTarget]::Machine)
 
 # Copy requirements file and install Python dependencies
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
+# Install Waitress - a production WSGI server for Windows
+RUN pip install --no-cache-dir waitress
+
 # Copy application code
 COPY . .
+
+# Create a simple waitress script file
+COPY run_waitress.py .
 
 # Expose port
 EXPOSE 5000
 
-# Set entry point
-ENTRYPOINT ["python", "app.py"]
+# Set entry point to use Waitress instead of Flask's development server
+ENTRYPOINT ["python", "run_waitress.py"]

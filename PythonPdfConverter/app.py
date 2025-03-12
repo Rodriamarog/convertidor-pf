@@ -86,8 +86,8 @@ def check_dependencies():
     except ImportError:
         missing.append("Pillow")
     
-    # Check for command-line tools
-    tools = ["gs", "pdftk", "qpdf", "pdftoppm", "pdfinfo", "pdfimages"]
+    # Check for command-line tools (removed gs from the list)
+    tools = ["pdftk", "qpdf", "pdftoppm", "pdfinfo", "pdfimages"]
     for tool in tools:
         try:
             # Use 'where' on Windows, 'which' on Unix

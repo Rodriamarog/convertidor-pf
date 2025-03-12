@@ -38,27 +38,7 @@ def flatten_pdf_forms(input_pdf, output_pdf):
         print("  Used qpdf for form flattening")
         return
     except (subprocess.CalledProcessError, FileNotFoundError):
-        print("  qpdf not available or failed, trying Ghostscript...")
-    
-    # Use Ghostscript as a last resort
-    try:
-        gs_cmd = [
-            'gs',
-            '-dSAFER',
-            '-dBATCH',
-            '-dNOPAUSE',
-            '-sDEVICE=pdfwrite',
-            '-dFIXEDMEDIA',
-            '-dPDFFitPage',
-            '-dCompatibilityLevel=1.4',
-            f'-sOutputFile={output_pdf}',
-            input_pdf
-        ]
-        subprocess.run(gs_cmd, check=True)
-        print("  Used Ghostscript for form flattening")
-        return
-    except (subprocess.CalledProcessError, FileNotFoundError):
-        print("  All external tools failed, using pure Python method...")
+        print("  qpdf not available or failed, using pure Python method...")
     
     # Pure Python fallback using PyPDF2
     try:
@@ -123,142 +103,17 @@ def compress_grayscale_300dpi(input_pdf, output_pdf, quality_level="low"):
         print(f"  ERROR: Input file does not exist: {input_pdf}")
         raise FileNotFoundError(f"Input file not found: {input_pdf}")
     
-    # Set resolution based on quality level
-    if quality_level == "high":
-        image_res = 300
-        downsample_threshold = 1.5
-    elif quality_level == "medium":
-        image_res = 200
-        downsample_threshold = 1.2
-    elif quality_level == "low":
-        image_res = 150
-        downsample_threshold = 1.0
-    else:  # minimum
-        image_res = 100
-        downsample_threshold = 1.0
+    print(f"  Using quality level: {quality_level}")
     
-    print(f"  Using quality level: {quality_level} (resolution: {image_res} DPI)")
+    # Use pure Python method for compression
+    print("  Using pure Python method for compression...")
+    if pure_python_grayscale(input_pdf, output_pdf):
+        return True
     
-    gs_command = [
-        'gs',
-        '-sDEVICE=pdfwrite',
-        '-dColorConversionStrategy=/Gray',
-        '-dProcessColorModel=/DeviceGray',
-        '-dCompatibilityLevel=1.4',
-        '-dNOPAUSE',
-        '-dBATCH',
-        '-dQUIET',
-        # Set overall quality based on level
-        f'-dPDFSETTINGS=/{"prepress" if quality_level == "high" else "printer" if quality_level == "medium" else "ebook" if quality_level == "low" else "screen"}',
-        # Font settings for size reduction
-        '-dCompressFonts=true',
-        '-dEmbedAllFonts=true',
-        '-dSubsetFonts=true',
-        # Image settings
-        '-dColorImageDownsampleType=/Bicubic',
-        '-dGrayImageDownsampleType=/Bicubic',
-        '-dMonoImageDownsampleType=/Bicubic',
-        f'-dColorImageResolution={image_res}',
-        f'-dGrayImageResolution={image_res}',
-        f'-dMonoImageResolution={image_res}',
-        '-dDownsampleColorImages=true',
-        '-dDownsampleGrayImages=true',
-        '-dDownsampleMonoImages=true',
-        f'-dColorImageDownsampleThreshold={downsample_threshold}',
-        f'-dGrayImageDownsampleThreshold={downsample_threshold}',
-        f'-dMonoImageDownsampleThreshold={downsample_threshold}',
-        # Use JPEG compression for images
-        '-dAutoFilterColorImages=false',
-        '-dAutoFilterGrayImages=false',
-        '-dColorImageFilter=/DCTEncode',
-        '-dGrayImageFilter=/DCTEncode',
-        # Set JPEG quality
-        f'-dJPEGQ={85 if quality_level == "high" else 75 if quality_level == "medium" else 65 if quality_level == "low" else 50}',
-        # Output
-        f'-sOutputFile={output_pdf}',
-        input_pdf
-    ]
-    
-    try:
-        print(f"  Running Ghostscript command for compression...")
-        print(f"  Command: {' '.join(gs_command)}")
-        result = subprocess.run(gs_command, check=True, capture_output=True, text=True)
-        
-        if result.stderr:
-            print(f"  Command errors: {result.stderr}")
-        
-        # Verify the output file was created
-        if os.path.exists(output_pdf):
-            print(f"  Successfully compressed PDF to {output_pdf}")
-            return True
-        else:
-            print(f"  ERROR: Output file was not created: {output_pdf}")
-            # Try a simpler command as fallback
-            print("  Trying simpler Ghostscript command as fallback...")
-            fallback_command = [
-                'gs',
-                '-sDEVICE=pdfwrite',
-                '-dCompatibilityLevel=1.4',
-                '-dPDFSETTINGS=/ebook',
-                '-dNOPAUSE',
-                '-dQUIET',
-                '-dBATCH',
-                f'-sOutputFile={output_pdf}',
-                input_pdf
-            ]
-            subprocess.run(fallback_command, check=True)
-            
-            if os.path.exists(output_pdf):
-                print(f"  Fallback command succeeded, created {output_pdf}")
-                return True
-            else:
-                print(f"  Fallback command failed, output file not created")
-                # Last resort - just copy the file
-                shutil.copy(input_pdf, output_pdf)
-                print(f"  Copied original file as last resort")
-                return os.path.exists(output_pdf)
-    except subprocess.CalledProcessError as e:
-        print(f"  Error during compression: {e}")
-        # Try a simpler command as fallback
-        try:
-            print("  Trying simpler Ghostscript command as fallback...")
-            fallback_command = [
-                'gs',
-                '-sDEVICE=pdfwrite',
-                '-dCompatibilityLevel=1.4',
-                '-dPDFSETTINGS=/ebook',
-                '-dNOPAUSE',
-                '-dQUIET',
-                '-dBATCH',
-                f'-sOutputFile={output_pdf}',
-                input_pdf
-            ]
-            subprocess.run(fallback_command, check=True)
-            
-            if os.path.exists(output_pdf):
-                print(f"  Fallback command succeeded, created {output_pdf}")
-                return True
-        except Exception as fallback_error:
-            print(f"  Fallback command failed: {fallback_error}")
-        
-        # Last resort - just copy the file
-        try:
-            shutil.copy(input_pdf, output_pdf)
-            print(f"  Copied original file as last resort")
-            return os.path.exists(output_pdf)
-        except Exception as copy_error:
-            print(f"  Failed to copy original file: {copy_error}")
-            return False
-    except Exception as e:
-        print(f"  Unexpected error during compression: {e}")
-        # Last resort - just copy the file
-        try:
-            shutil.copy(input_pdf, output_pdf)
-            print(f"  Copied original file as last resort")
-            return os.path.exists(output_pdf)
-        except Exception as copy_error:
-            print(f"  Failed to copy original file: {copy_error}")
-            return False
+    # If pure Python method fails, just copy the file
+    print("  Pure Python method failed, copying original file")
+    shutil.copy(input_pdf, output_pdf)
+    return os.path.exists(output_pdf)
 
 def remove_blank_pages(input_pdf, output_pdf):
     """Remove blank pages from PDF"""
@@ -295,58 +150,9 @@ def ensure_grayscale(input_pdf, output_pdf, preserve_quality=False):
         shutil.copy(input_pdf, output_pdf)
         return True
     
-    # Try pure Python method first since external tools are missing
+    # Use pure Python method for grayscale conversion
     if pure_python_grayscale(input_pdf, output_pdf):
         return True
-    
-    # Para archivos pequeños donde queremos preservar calidad
-    if preserve_quality:
-        try:
-            print("  Usando método de alta calidad para conversión a escala de grises...")
-            # Usar Ghostscript con configuración de alta calidad
-            gs_cmd = [
-                'gs',
-                '-sDEVICE=pdfwrite',
-                '-dColorConversionStrategy=/Gray',
-                '-dProcessColorModel=/DeviceGray',
-                '-dCompatibilityLevel=1.4',
-                '-dNOPAUSE',
-                '-dBATCH',
-                '-dQUIET',
-                # Configuración de alta calidad
-                '-dPDFSETTINGS=/prepress',
-                '-dColorImageResolution=300',
-                '-dGrayImageResolution=300',
-                '-dMonoImageResolution=300',
-                # No comprimir imágenes
-                '-dAutoFilterColorImages=false',
-                '-dAutoFilterGrayImages=false',
-                '-dColorImageFilter=/FlateEncode',
-                '-dGrayImageFilter=/FlateEncode',
-                f'-sOutputFile={output_pdf}',
-                input_pdf
-            ]
-            print(f"  Running command: {' '.join(gs_cmd)}")
-            result = subprocess.run(gs_cmd, check=True, capture_output=True, text=True)
-            print(f"  Command output: {result.stdout}")
-            if result.stderr:
-                print(f"  Command errors: {result.stderr}")
-                
-            # Verify the output file was created
-            if os.path.exists(output_pdf):
-                print("  Conversión a escala de grises completada con alta calidad")
-                return True
-            else:
-                print(f"  ERROR: Output file was not created: {output_pdf}")
-                raise FileNotFoundError(f"Output file was not created: {output_pdf}")
-        except Exception as e:
-            print(f"  Error en conversión de alta calidad: {e}")
-            print("  Intentando método alternativo...")
-    
-    # If we get here, try the pure Python method again as a last resort
-    if not os.path.exists(output_pdf):
-        if pure_python_grayscale(input_pdf, output_pdf):
-            return True
     
     # Last resort - just copy the file
     if not os.path.exists(output_pdf):
@@ -361,7 +167,7 @@ def ensure_grayscale(input_pdf, output_pdf, preserve_quality=False):
     return os.path.exists(output_pdf)
 
 def pure_python_grayscale(input_pdf, output_pdf):
-    """Convert PDF to grayscale using only Python libraries (PyMuPDF)"""
+    """Convert PDF to grayscale using only Python libraries (PyMuPDF) with compression"""
     print("  Using pure Python grayscale conversion with PyMuPDF...")
     try:
         # Open the input PDF
@@ -371,8 +177,15 @@ def pure_python_grayscale(input_pdf, output_pdf):
         for page_num in range(len(doc)):
             page = doc[page_num]
             
-            # Get the page as a pixmap
-            pix = page.get_pixmap()
+            # Get the page as a pixmap with lower resolution for larger files
+            matrix = fitz.Matrix(1, 1)  # No scaling by default
+            
+            # For large pages, use downscaling
+            if page.rect.width > 1000 or page.rect.height > 1000:
+                scale_factor = min(1.0, 1000 / max(page.rect.width, page.rect.height))
+                matrix = fitz.Matrix(scale_factor, scale_factor)
+            
+            pix = page.get_pixmap(matrix=matrix)
             
             # Convert to grayscale
             gray_pix = fitz.Pixmap(fitz.csGRAY, pix)
@@ -380,15 +193,20 @@ def pure_python_grayscale(input_pdf, output_pdf):
             # Create a new page in the output document
             output_page = output_doc.new_page(width=page.rect.width, height=page.rect.height)
             
-            # Insert the grayscale image
+            # Insert the grayscale image with compression
             output_page.insert_image(output_page.rect, pixmap=gray_pix)
         
-        # Save the output document
-        output_doc.save(output_pdf)
+        # Save with compression options
+        output_doc.save(output_pdf, 
+                       garbage=4,  # Maximum garbage collection
+                       deflate=True,  # Use deflate compression
+                       clean=True,  # Clean content streams
+                       linear=True)  # Optimize for web viewing
+        
         output_doc.close()
         doc.close()
         
-        print("  Successfully converted to grayscale using PyMuPDF")
+        print("  Successfully converted to grayscale using PyMuPDF with compression")
         return True
     except Exception as e:
         print(f"  Error in PyMuPDF grayscale conversion: {e}")
@@ -454,44 +272,37 @@ def aggressive_compress(input_pdf, output_pdf, max_size_mb=3):
     
     print(f"  Original size: {original_size/1024/1024:.2f}MB, needs compression")
     
-    # Try progressively stronger compression until the file is small enough
-    quality_levels = ["high", "medium", "low", "minimum"]
-    
+    # Try using PyMuPDF with different quality settings
     with tempfile.TemporaryDirectory() as tmpdir:
         temp_output = os.path.join(tmpdir, "compressed.pdf")
         
-        for quality in quality_levels:
-            print(f"  Trying {quality} quality compression...")
-            compress_grayscale_300dpi(input_pdf, temp_output, quality)
-            
+        # Try to compress using PyMuPDF
+        if pure_python_grayscale(input_pdf, temp_output):
             current_size = os.path.getsize(temp_output)
-            print(f"  Size after {quality} compression: {current_size/1024/1024:.2f}MB")
+            print(f"  Size after PyMuPDF compression: {current_size/1024/1024:.2f}MB")
             
             if current_size <= max_size_bytes:
                 print(f"  Successfully compressed to under {max_size_mb}MB")
                 shutil.copy(temp_output, output_pdf)
                 return True
         
-        # If we get here, try super aggressive compression as a last resort
-        if current_size > max_size_bytes:
-            print("  Still too large, trying image-based conversion...")
-            if downsample_to_images(input_pdf, temp_output, max_size_bytes):
-                shutil.copy(temp_output, output_pdf)
-                return True
+        # If still too large, try image-based conversion
+        if downsample_to_images(input_pdf, temp_output, max_size_bytes):
+            shutil.copy(temp_output, output_pdf)
+            return True
         
         # If all else fails, we need to offer more drastic options
         print(f"  WARNING: Could not compress below {max_size_mb}MB with quality preservation")
-        print(f"  Final size: {os.path.getsize(temp_output)/1024/1024:.2f}MB")
         
         # Copy our best attempt anyway
         shutil.copy(temp_output, output_pdf)
         return False
 
 def downsample_to_images(input_pdf, output_pdf, max_size_bytes):
-    """Last resort: Convert PDF to downsampled images and rebuild"""
+    """Last resort: Convert PDF to downsampled images and rebuild with aggressive compression"""
     try:
-        # Start with a reasonable DPI
-        for dpi in [150, 120, 100, 75]:
+        # Start with a reasonable DPI and progressively lower it
+        for dpi in [150, 120, 100, 75, 60]:
             print(f"  Trying image-based conversion at {dpi} DPI...")
             
             with tempfile.TemporaryDirectory() as tmpdir:
@@ -517,6 +328,31 @@ def downsample_to_images(input_pdf, output_pdf, max_size_bytes):
                     print("  No images extracted!")
                     return False
                 
+                # Optimize images before combining
+                optimized_files = []
+                for img_file in img_files:
+                    try:
+                        # Open with Pillow and compress
+                        img = Image.open(img_file)
+                        
+                        # Resize if very large
+                        max_dimension = 1500  # Max width or height
+                        if max(img.width, img.height) > max_dimension:
+                            ratio = max_dimension / max(img.width, img.height)
+                            new_size = (int(img.width * ratio), int(img.height * ratio))
+                            img = img.resize(new_size, Image.LANCZOS)
+                        
+                        # Convert to grayscale and optimize
+                        img = img.convert('L')
+                        
+                        # Save with compression
+                        optimized_path = os.path.join(tmpdir, f"opt_{os.path.basename(img_file)}")
+                        img.save(optimized_path, 'PNG', optimize=True, compress_level=9)
+                        optimized_files.append(optimized_path)
+                    except Exception as e:
+                        print(f"  Error optimizing image {img_file}: {e}")
+                        optimized_files.append(img_file)  # Use original if optimization fails
+                
                 # Combine into a PDF with tight compression
                 temp_pdf = os.path.join(tmpdir, "temp.pdf")
                 
@@ -524,15 +360,15 @@ def downsample_to_images(input_pdf, output_pdf, max_size_bytes):
                     # Try img2pdf first (usually better size/quality ratio)
                     import img2pdf
                     with open(temp_pdf, "wb") as f:
-                        f.write(img2pdf.convert(img_files, dpi=dpi))
+                        f.write(img2pdf.convert(optimized_files, dpi=dpi))
                 except ImportError:
                     # Fall back to ImageMagick
                     convert_cmd = [
                         'convert',
                         '-density', str(dpi),
-                        '-quality', '50',
+                        '-quality', '40',  # Lower quality for smaller files
                         '-compress', 'JPEG',
-                        *img_files,
+                        *optimized_files,
                         temp_pdf
                     ]
                     subprocess.run(convert_cmd, check=True)
@@ -544,6 +380,63 @@ def downsample_to_images(input_pdf, output_pdf, max_size_bytes):
                     return True
         
         # If we get here, even the lowest quality didn't work
+        # Try one last extreme measure - convert to JPEG with very low quality
+        print("  Attempting extreme compression with very low quality JPEG...")
+        with tempfile.TemporaryDirectory() as tmpdir:
+            # Extract at lowest DPI
+            extract_cmd = [
+                'pdftoppm',
+                '-jpeg',
+                '-r', '50',  # Very low DPI
+                '-gray',
+                input_pdf,
+                os.path.join(tmpdir, 'page')
+            ]
+            subprocess.run(extract_cmd, check=True)
+            
+            # Find all generated images
+            img_files = sorted([
+                os.path.join(tmpdir, f) 
+                for f in os.listdir(tmpdir) 
+                if f.endswith('.jpg')
+            ])
+            
+            if not img_files:
+                return False
+                
+            # Compress images extremely
+            compressed_files = []
+            for img_file in img_files:
+                try:
+                    img = Image.open(img_file)
+                    compressed_path = os.path.join(tmpdir, f"comp_{os.path.basename(img_file)}")
+                    img.save(compressed_path, 'JPEG', quality=30)  # Very low quality
+                    compressed_files.append(compressed_path)
+                except Exception:
+                    compressed_files.append(img_file)
+            
+            # Combine into final PDF
+            temp_pdf = os.path.join(tmpdir, "extreme.pdf")
+            try:
+                import img2pdf
+                with open(temp_pdf, "wb") as f:
+                    f.write(img2pdf.convert(compressed_files, dpi=50))
+            except ImportError:
+                convert_cmd = [
+                    'convert',
+                    '-density', '50',
+                    '-quality', '30',
+                    '-compress', 'JPEG',
+                    *compressed_files,
+                    temp_pdf
+                ]
+                subprocess.run(convert_cmd, check=True)
+            
+            if os.path.getsize(temp_pdf) <= max_size_bytes:
+                print(f"  Successfully compressed to {os.path.getsize(temp_pdf)/1024/1024:.2f}MB with extreme measures")
+                shutil.copy(temp_pdf, output_pdf)
+                return True
+            
         return False
         
     except Exception as e:
@@ -641,9 +534,9 @@ def main(input_path):
                 print("4. Convirtiendo a escala de grises...")
                 ensure_grayscale(step2.name, step3.name)
                 
-                print("5. Optimizando con compresión a 300 DPI...")
+                print("5. Optimizando con compresión...")
                 try:
-                    success = compress_grayscale_300dpi(step3.name, output_pdf)
+                    success = pure_python_grayscale(step3.name, output_pdf)
                 except Exception as e:
                     print(f"  Error in compression: {e}, using pure Python method")
                     success = pure_python_grayscale(step3.name, output_pdf)
